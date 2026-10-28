@@ -1,4 +1,4 @@
-# WindowsDevInstalls
+﻿# WindowsDevInstalls
 
 Windows-oriented developer environment bootstrapper (PowerShell 5.1+, WPF checklist UI + CLI). Personal opinionated defaults that others can adapt. **Experimental: start with a virtual machine and a dry run.** It has not been executed on a Windows machine as part of its creation.
 
@@ -151,3 +151,12 @@ Check on **Windows PowerShell 5.1**, without installing anything:
 **Important:** This is a targeted, unverified runtime patch. Static analysis
 ran outside of Windows and is not a substitute for executing SmokeTest.ps1
 in Windows PowerShell 5.1.
+
+
+## v2.4 — Safe preview and bounded executable checks
+
+- `-DryRun` and the GUI **Preview (dry run)** button are now metadata-only previews: no installers, `--version` commands, or Kubernetes API calls run. Existing command paths are displayed as `DetectedUnverified` (present on disk/PATH, *not* validated), while absent tools are `Planned`.
+- Actual checks (including `-VerifyOnly` and post-install probes) now use a bounded external process with a default 10-second timeout. A timeout is recorded as `VerificationPending`, not interpreted as permission to install another package copy.
+- Running an installer itself (WinGet, npm, Chocolatey, Scoop) is not time-bounded yet; this is a different path from the version/probe checks.
+- `Tests/ProbeTimeoutTest.ps1` is a Windows-only regression check for the timeout. It launches a child PowerShell process that intentionally sleeps five seconds and checks that it is stopped after one second. No installs occur.
+- Closing the GUI while a child process is running does **not** currently cancel that process; use Task Manager to terminate the child Windows PowerShell process if required.

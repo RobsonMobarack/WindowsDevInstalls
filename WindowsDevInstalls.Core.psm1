@@ -1,4 +1,4 @@
-#requires -Version 5.1
+﻿#requires -Version 5.1
 Set-StrictMode -Version Latest
 
 function Get-ToolCatalog {
@@ -84,9 +84,73 @@ function Get-ApplicationExecutable {
     return $null
 }
 
+function Invoke-ExecutableProbe {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$Executable,
+        [string[]]$Arguments = @(),
+        [ValidateRange(1, 120)][int]$TimeoutSeconds = 10
+    )
+
+    # Bounded native process, including .cmd shims used by npm CLIs.
+    # Redirect to files (not pipes) so verbose tools cannot deadlock the parent.
+    $stdoutPath = [IO.Path]::GetTempFileName()
+    $stderrPath = [IO.Path]::GetTempFileName()
+    $process = $null
+    try {
+        $quotedArgs = @($Arguments | ForEach-Object {
+            $arg = [string]$_
+            if ($arg -match '[\s"]') { '"' + ($arg -replace '"', '\"') + '"' }
+            else { $arg }
+        }) -join ' '
+
+        $file = $Executable
+        $argumentsText = $quotedArgs
+        if ([IO.Path]::GetExtension($Executable) -in @('.cmd', '.bat')) {
+            $file = if ($env:ComSpec) { $env:ComSpec } else { Join-Path $env:WINDIR 'System32\cmd.exe' }
+            $argumentsText = '/d /s /c ""' + $Executable + '" ' + $quotedArgs + '"'
+        }
+
+        $options = @{
+            FilePath = $file
+            PassThru = $true
+            WindowStyle = 'Hidden'
+            RedirectStandardOutput = $stdoutPath
+            RedirectStandardError = $stderrPath
+            ErrorAction = 'Stop'
+        }
+        if (-not [string]::IsNullOrWhiteSpace($argumentsText)) {
+            $options.ArgumentList = $argumentsText
+        }
+        $process = Start-Process @options
+        if (-not $process.WaitForExit($TimeoutSeconds * 1000)) {
+            # Kill the exact probe process and its children, never the host UI.
+            try {
+                $taskkill = Join-Path $env:WINDIR 'System32\taskkill.exe'
+                & $taskkill /PID $process.Id /T /F 2>$null | Out-Null
+            }
+            catch { }
+            if (-not $process.HasExited) {
+                try { $process.Kill() } catch { }
+            }
+            throw [System.TimeoutException]::new(
+                "Verification timed out after $TimeoutSeconds seconds: $Executable $quotedArgs"
+            )
+        }
+        return ($process.ExitCode -eq 0)
+    }
+    finally {
+        if ($null -ne $process) { $process.Dispose() }
+        Remove-Item -LiteralPath $stdoutPath, $stderrPath -Force -ErrorAction SilentlyContinue
+    }
+}
+
 function Test-Application {
     [CmdletBinding()]
-    param([Parameter(Mandatory)]$Tool)
+    param(
+        [Parameter(Mandatory)]$Tool,
+        [ValidateRange(1, 120)][int]$TimeoutSeconds = 10
+    )
     if ($Tool.Type -eq 'cluster') { return (Test-DockerDesktopKubernetes) }
     if ($Tool.Type -eq 'manual') {
         if ($Tool.Key -eq 'Scoop') {
@@ -115,11 +179,13 @@ function Test-Application {
     $executable = Get-ApplicationExecutable -Tool $Tool
     if ([string]::IsNullOrWhiteSpace($executable)) { return $false }
     try {
-        $probeArgs = @($Tool.ProbeArgs)
-        & $executable @probeArgs *> $null
-        return ($LASTEXITCODE -eq 0)
+        return (Invoke-ExecutableProbe -Executable $executable -Arguments @($Tool.ProbeArgs) -TimeoutSeconds $TimeoutSeconds)
     }
-    catch { return $false }
+    catch [System.TimeoutException] { throw }
+    catch {
+        Write-Warning "Could not verify $($Tool.Name): $($_.Exception.Message)"
+        return $false
+    }
 }
 
 function Update-SessionPath {
@@ -311,17 +377,35 @@ function Install-Application {
         [switch]$VerifyOnly
     )
 
+    # IMPORTANT: Preview must NEVER launch a tool's version command.
+    # Only examine PATH / known paths, without modifying installations or executing tools.
+    if ($DryRun) {
+        $detected = $false
+        if ($Tool.Type -notin @('cluster', 'manual')) {
+            $detected = -not [string]::IsNullOrWhiteSpace((Get-ApplicationExecutable -Tool $Tool))
+        }
+        if ($detected) {
+            Write-Host "[FOUND] $($Tool.Name) (executable detected; not executed)." -ForegroundColor DarkGreen
+            return (New-InstallResult $Tool 'DetectedUnverified' '-' 'Detected by path only; not executed')
+        }
+        Write-Host "[PLAN] $($Tool.Name) [$($Tool.Type)]" -ForegroundColor Cyan
+        return (New-InstallResult $Tool 'Planned' $Manager 'No changes made')
+    }
+
     Update-SessionPath
-    if (Test-Application -Tool $Tool) {
-        Write-Host "[OK] $($Tool.Name) is already available." -ForegroundColor Green
-        return (New-InstallResult $Tool 'AlreadyInstalled' '-' 'Verification succeeded')
+    Write-Host "[CHECK] $($Tool.Name) (up to 10s for command verification)..." -ForegroundColor Gray
+    try {
+        if (Test-Application -Tool $Tool) {
+            Write-Host "[OK] $($Tool.Name) is already available." -ForegroundColor Green
+            return (New-InstallResult $Tool 'AlreadyInstalled' '-' 'Verification succeeded')
+        }
+    }
+    catch [System.TimeoutException] {
+        Write-Host "[WARNING] $($_.Exception.Message)" -ForegroundColor Yellow
+        return (New-InstallResult $Tool 'VerificationPending' '-' $_.Exception.Message)
     }
     if ($VerifyOnly) {
         return (New-InstallResult $Tool 'VerificationPending' '-' 'Not detected or not yet ready')
-    }
-    if ($DryRun) {
-        Write-Host "[PLAN] $($Tool.Name) [$($Tool.Type)]" -ForegroundColor Cyan
-        return (New-InstallResult $Tool 'Planned' $Manager 'No changes made')
     }
     if ($Tool.Type -eq 'cluster') { return (Initialize-DockerDesktopKubernetes -Tool $Tool) }
     if ($Tool.Type -eq 'manual') {
@@ -339,6 +423,9 @@ function Install-Application {
                 return (New-InstallResult $Tool 'Installed' 'npm' 'Installation and verification succeeded')
             }
             return (New-InstallResult $Tool 'VerificationPending' 'npm' 'npm succeeded but CLI not yet visible; open a new terminal')
+        }
+        catch [System.TimeoutException] {
+            return (New-InstallResult $Tool 'VerificationPending' 'npm' $_.Exception.Message)
         }
         catch { return (New-InstallResult $Tool 'Failed' 'npm' $_.Exception.Message) }
     }
@@ -376,8 +463,14 @@ function Install-Application {
                 Direct { Invoke-DirectInstall -Tool $Tool }
             }
             Update-SessionPath
-            if (Test-Application -Tool $Tool) {
-                return (New-InstallResult $Tool 'Installed' $candidate 'Installation and verification succeeded')
+            try {
+                if (Test-Application -Tool $Tool) {
+                    return (New-InstallResult $Tool 'Installed' $candidate 'Installation and verification succeeded')
+                }
+            }
+            catch [System.TimeoutException] {
+                # Installer succeeded. Do not retry through a second package manager.
+                return (New-InstallResult $Tool 'VerificationPending' $candidate $_.Exception.Message)
             }
             # A successful installer must not trigger another package manager.
             $note = if ($Tool.Key -eq 'MySQL') {
