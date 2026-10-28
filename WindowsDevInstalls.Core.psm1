@@ -4,15 +4,22 @@ Set-StrictMode -Version Latest
 function Get-ToolCatalog {
     [CmdletBinding()]
     param()
-    $file = Join-Path $PSScriptRoot 'Config\tools.json'
-    if (-not (Test-Path -LiteralPath $file)) { throw "Tool catalog not found: $file" }
-    # ConvertFrom-Json may pass a JSON root array through as one pipeline
-    # object on Windows PowerShell 5.1. Emit each tool separately.
-    $catalog = Get-Content -LiteralPath $file -Raw -Encoding UTF8 |
-        ConvertFrom-Json -ErrorAction Stop
 
-    foreach ($tool in $catalog) {
-        Write-Output $tool
+    $file = Join-Path $PSScriptRoot 'Config\tools.json'
+    if (-not (Test-Path -LiteralPath $file)) {
+        throw "Tool catalog not found: $file"
+    }
+
+    # Windows PowerShell 5.1 passes a JSON root array as ONE pipeline object.
+    # Parentheses force PowerShell to enumerate its individual entries.
+    (Get-Content -LiteralPath $file -Raw -Encoding UTF8 |
+        ConvertFrom-Json -ErrorAction Stop) | ForEach-Object {
+        if ($_ -isnot [pscustomobject] -or
+            $null -eq $_.PSObject.Properties['Key'] -or
+            [string]::IsNullOrWhiteSpace([string]$_.Key)) {
+            throw 'Invalid tools.json: expected individual tool objects with Key. Check JSON array enumeration.'
+        }
+        $_
     }
 }
 

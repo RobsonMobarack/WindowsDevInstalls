@@ -130,3 +130,24 @@ contains the separate `StrictMode` `.Name` collection fixes from the prior hotfi
 Pester tests now verify that catalog functions return 38 separate tool records
 and 24 separate technology records. They need to be executed in a real Windows
 PowerShell runtime; validation on non-Windows platforms is only static.
+
+## v2.3 Windows PowerShell 5.1 JSON root-array enumeration fix
+
+The v2.2 catalog fix still passed one nested array downstream in Windows PowerShell 5.1.
+Both catalog functions now enclose the `ConvertFrom-Json` pipeline in parentheses,
+which forces enumeration before passing each item to `ForEach-Object`. Invalid
+entry types are rejected explicitly. This addresses the `1 core tools` /
+`Object[] Array` / `Unknown technology` symptoms.
+
+Check on **Windows PowerShell 5.1**, without installing anything:
+
+```powershell
+.\Tests\SmokeTest.ps1
+.\WindowsDevInstalls.ps1 -List
+.\WindowsDevInstalls.ps1 -Technologies Angular,Go -DryRun
+.\WindowsDevInstalls.ps1 -Gui -DryRun
+```
+
+**Important:** This is a targeted, unverified runtime patch. Static analysis
+ran outside of Windows and is not a substitute for executing SmokeTest.ps1
+in Windows PowerShell 5.1.

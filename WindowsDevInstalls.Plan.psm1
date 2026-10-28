@@ -8,13 +8,22 @@ Import-Module (Join-Path $PSScriptRoot 'WindowsDevInstalls.Core.psm1') -ErrorAct
 function Get-TechnologyCatalog {
     [CmdletBinding()]
     param()
-    $path = Join-Path $PSScriptRoot 'Config\technologies.json'
-    # Emit each JSON entry independently (PowerShell 5.1 array semantics).
-    $catalog = Get-Content -LiteralPath $path -Raw -Encoding UTF8 |
-        ConvertFrom-Json -ErrorAction Stop
 
-    foreach ($technology in $catalog) {
-        Write-Output $technology
+    $path = Join-Path $PSScriptRoot 'Config\technologies.json'
+    if (-not (Test-Path -LiteralPath $path)) {
+        throw "Technology catalog not found: $path"
+    }
+
+    # The surrounding expression forces enumeration of the JSON root array
+    # in Windows PowerShell 5.1, instead of emitting one Object[] value.
+    (Get-Content -LiteralPath $path -Raw -Encoding UTF8 |
+        ConvertFrom-Json -ErrorAction Stop) | ForEach-Object {
+        if ($_ -isnot [pscustomobject] -or
+            $null -eq $_.PSObject.Properties['Key'] -or
+            [string]::IsNullOrWhiteSpace([string]$_.Key)) {
+            throw 'Invalid technologies.json: expected individual technology objects with Key. Check JSON array enumeration.'
+        }
+        $_
     }
 }
 
