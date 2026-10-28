@@ -23,26 +23,79 @@ function Get-ToolCatalog {
     }
 }
 
+function Get-QtSdkPath {
+    [CmdletBinding()]
+    param()
+
+    # A Qt Creator installation alone does not prove that the Qt SDK exists.
+    # Detect a Qt kit (Qt binaries and/or its CMake package configuration).
+    foreach ($commandName in @('qmake', 'qmake6', 'qtpaths6')) {
+        $command = Get-Command -Name $commandName -CommandType Application -ErrorAction SilentlyContinue |
+            Select-Object -First 1
+        if ($null -ne $command) { return $command.Source }
+    }
+
+    $roots = New-Object 'System.Collections.Generic.List[string]'
+    foreach ($path in @(
+        $env:WINDOWSDEVINSTALLS_QT_ROOT, $env:QT_ROOT, $env:QTDIR,
+        $env:Qt6_DIR, $env:Qt5_DIR,
+        (Join-Path $env:SystemDrive 'Qt'),
+        (Join-Path $env:ProgramFiles 'Qt'),
+        (Join-Path $env:LOCALAPPDATA 'Qt'),
+        (Join-Path $env:USERPROFILE 'Qt')
+    )) {
+        if (-not [string]::IsNullOrWhiteSpace($path)) { [void]$roots.Add($path) }
+    }
+    if (-not [string]::IsNullOrWhiteSpace($env:CMAKE_PREFIX_PATH)) {
+        foreach ($path in ($env:CMAKE_PREFIX_PATH -split ';')) {
+            if (-not [string]::IsNullOrWhiteSpace($path)) { [void]$roots.Add($path) }
+        }
+    }
+
+    $seen = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::OrdinalIgnoreCase)
+    foreach ($candidate in $roots) {
+        $path = [Environment]::ExpandEnvironmentVariables($candidate.Trim('"'))
+        if (-not (Test-Path -LiteralPath $path -PathType Container)) { continue }
+        if (-not $seen.Add($path)) { continue }
+        # Root can point directly to a kit, its CMake Qt6/Qt5 directory,
+        # or the overall Qt installation (typically C:\Qt).
+        $patterns = @(
+            'bin\qmake.exe', 'bin\qmake6.exe', 'bin\qtpaths6.exe',
+            'lib\cmake\Qt6\Qt6Config.cmake', 'lib\cmake\Qt5\Qt5Config.cmake',
+            'Qt6Config.cmake', 'Qt5Config.cmake',
+            '*\bin\qmake.exe', '*\bin\qmake6.exe', '*\bin\qtpaths6.exe',
+            '*\lib\cmake\Qt6\Qt6Config.cmake', '*\lib\cmake\Qt5\Qt5Config.cmake',
+            '*\*\bin\qmake.exe', '*\*\bin\qmake6.exe', '*\*\bin\qtpaths6.exe',
+            '*\*\lib\cmake\Qt6\Qt6Config.cmake', '*\*\lib\cmake\Qt5\Qt5Config.cmake'
+        )
+        foreach ($relativePath in $patterns) {
+            # -Path supports wildcards while -LiteralPath does not.
+            $match = Get-Item -Path (Join-Path $path $relativePath) -ErrorAction SilentlyContinue |
+                Where-Object { -not $_.PSIsContainer } | Select-Object -First 1
+            if ($null -ne $match) { return $match.FullName }
+        }
+    }
+    return $null
+}
+
 function Test-DockerDesktopKubernetes {
     [CmdletBinding()]
     param()
-    if ($null -eq (Get-Command kubectl -CommandType Application -ErrorAction SilentlyContinue)) {
-        # Prefer Docker Desktop's bundled kubectl when absent from PATH.
-        $candidates = @(
-            (Join-Path $env:ProgramFiles 'Docker\Docker\resources\bin'),
-            (Join-Path $env:LOCALAPPDATA 'Programs\DockerDesktop\resources\bin')
-        )
-        foreach ($candidate in $candidates) {
-            if (Test-Path -LiteralPath (Join-Path $candidate 'kubectl.exe')) {
-                $env:Path = "$candidate;$env:Path"
-                break
-            }
-        }
-    }
-    if ($null -eq (Get-Command kubectl -CommandType Application -ErrorAction SilentlyContinue)) { return $false }
+
+    $kubectl = Get-Command kubectl -CommandType Application -ErrorAction SilentlyContinue |
+        Select-Object -First 1
+    if ($null -eq $kubectl) { return $false }
+
+    # Inspect explicitly named context; do NOT switch the user's active context.
+    # kubectl may emit errors on stderr, which PowerShell 5.1 can promote to
+    # terminating errors when ErrorActionPreference is Stop.
+    $oldPreference = $ErrorActionPreference
     try {
-        # Explicit context: never mutate the user's selected Kubernetes context.
-        $raw = & kubectl --context docker-desktop get nodes -o json --request-timeout=8s 2>$null
+        $ErrorActionPreference = 'Continue'
+        $contexts = @(& $kubectl.Source config get-contexts -o name 2>$null)
+        if ($LASTEXITCODE -ne 0 -or ($contexts -notcontains 'docker-desktop')) { return $false }
+
+        $raw = @(& $kubectl.Source --context docker-desktop get nodes -o json --request-timeout=8s 2>$null)
         if ($LASTEXITCODE -ne 0) { return $false }
         $data = (($raw | Out-String) | ConvertFrom-Json -ErrorAction Stop)
         foreach ($node in @($data.items)) {
@@ -52,6 +105,7 @@ function Test-DockerDesktopKubernetes {
         }
     }
     catch { return $false }
+    finally { $ErrorActionPreference = $oldPreference }
     return $false
 }
 
@@ -149,43 +203,46 @@ function Test-Application {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory)]$Tool,
-        [ValidateRange(1, 120)][int]$TimeoutSeconds = 10
+        [ValidateRange(1, 120)][int]$TimeoutSeconds = 10,
+        [switch]$Functional
     )
+
+    # Default check: installation DETECTION, not a potentially blocking launch.
+    # In particular, jdtls, GUI applications and development servers do not
+    # necessarily support --version, or may not exit after being launched.
     if ($Tool.Type -eq 'cluster') { return (Test-DockerDesktopKubernetes) }
+    if ($Tool.Key -eq 'Qt') {
+        return (-not [string]::IsNullOrWhiteSpace((Get-QtSdkPath)))
+    }
     if ($Tool.Type -eq 'manual') {
         if ($Tool.Key -eq 'Scoop') {
             return ($null -ne (Get-Command scoop -ErrorAction SilentlyContinue))
         }
-        return ($false)
-    }
-    if ($Tool.Key -eq 'Docker') {
-        # The docker CLI alone is not proof that Docker Desktop is installed.
-        $desktopLocations = @(
-            (Join-Path $env:ProgramFiles 'Docker\Docker\Docker Desktop.exe'),
-            (Join-Path $env:LOCALAPPDATA 'Programs\DockerDesktop\Docker Desktop.exe')
-        )
-        $desktopPresent = $false
-        foreach ($location in $desktopLocations) {
-            if (Test-Path -LiteralPath $location) { $desktopPresent = $true; break }
-        }
-        if (-not $desktopPresent) { return $false }
-    }
-    if ($Tool.Key -eq 'MySQL') {
-        # Installed MySQL client binaries do not prove that a server is running.
-        $service = Get-Service -Name 'MySQL*' -ErrorAction SilentlyContinue |
-            Where-Object { $_.Status -eq 'Running' } | Select-Object -First 1
-        return ($null -ne $service)
-    }
-    $executable = Get-ApplicationExecutable -Tool $Tool
-    if ([string]::IsNullOrWhiteSpace($executable)) { return $false }
-    try {
-        return (Invoke-ExecutableProbe -Executable $executable -Arguments @($Tool.ProbeArgs) -TimeoutSeconds $TimeoutSeconds)
-    }
-    catch [System.TimeoutException] { throw }
-    catch {
-        Write-Warning "Could not verify $($Tool.Name): $($_.Exception.Message)"
         return $false
     }
+    if ($Tool.Key -eq 'Docker') {
+        # Docker CLI can be installed without Docker Desktop. Check the app.
+        foreach ($path in @(
+            (Join-Path $env:ProgramFiles 'Docker\Docker\Docker Desktop.exe'),
+            (Join-Path $env:LOCALAPPDATA 'Programs\DockerDesktop\Docker Desktop.exe')
+        )) {
+            if (Test-Path -LiteralPath $path -PathType Leaf) { return $true }
+        }
+        return $false
+    }
+    if ($Tool.Key -eq 'MySQL') {
+        # A stopped MySQL service still means the server is installed.
+        $service = Get-Service -Name 'MySQL*' -ErrorAction SilentlyContinue |
+            Select-Object -First 1
+        if ($null -ne $service) { return $true }
+    }
+
+    $executable = Get-ApplicationExecutable -Tool $Tool
+    if ([string]::IsNullOrWhiteSpace($executable)) { return $false }
+    if (-not $Functional -or $Tool.Key -eq 'Jdtls') { return $true }
+
+    # Optional deeper probe, kept separate from "Verify installed".
+    return (Invoke-ExecutableProbe -Executable $executable -Arguments @($Tool.ProbeArgs) -TimeoutSeconds $TimeoutSeconds)
 }
 
 function Update-SessionPath {
@@ -381,23 +438,23 @@ function Install-Application {
     # Only examine PATH / known paths, without modifying installations or executing tools.
     if ($DryRun) {
         $detected = $false
-        if ($Tool.Type -notin @('cluster', 'manual')) {
-            $detected = -not [string]::IsNullOrWhiteSpace((Get-ApplicationExecutable -Tool $Tool))
+        if ($Tool.Type -ne 'cluster') {
+            $detected = Test-Application -Tool $Tool
         }
         if ($detected) {
-            Write-Host "[FOUND] $($Tool.Name) (executable detected; not executed)." -ForegroundColor DarkGreen
-            return (New-InstallResult $Tool 'DetectedUnverified' '-' 'Detected by path only; not executed')
+            Write-Host "[FOUND] $($Tool.Name) (installation detected; no apps launched)." -ForegroundColor DarkGreen
+            return (New-InstallResult $Tool 'DetectedUnverified' '-' 'Installation footprint detected; not executed')
         }
         Write-Host "[PLAN] $($Tool.Name) [$($Tool.Type)]" -ForegroundColor Cyan
         return (New-InstallResult $Tool 'Planned' $Manager 'No changes made')
     }
 
     Update-SessionPath
-    Write-Host "[CHECK] $($Tool.Name) (up to 10s for command verification)..." -ForegroundColor Gray
+    Write-Host "[CHECK] $($Tool.Name) (installation detection)..." -ForegroundColor Gray
     try {
         if (Test-Application -Tool $Tool) {
             Write-Host "[OK] $($Tool.Name) is already available." -ForegroundColor Green
-            return (New-InstallResult $Tool 'AlreadyInstalled' '-' 'Verification succeeded')
+            return (New-InstallResult $Tool 'AlreadyInstalled' '-' 'Installation detected (execution not tested)')
         }
     }
     catch [System.TimeoutException] {
@@ -405,7 +462,10 @@ function Install-Application {
         return (New-InstallResult $Tool 'VerificationPending' '-' $_.Exception.Message)
     }
     if ($VerifyOnly) {
-        return (New-InstallResult $Tool 'VerificationPending' '-' 'Not detected or not yet ready')
+        if ($Tool.Type -eq 'cluster') {
+            return (New-InstallResult $Tool 'NotReady' '-' 'Docker Desktop Kubernetes has no Ready node, or docker-desktop context is missing')
+        }
+        return (New-InstallResult $Tool 'NotInstalled' '-' 'Installation not detected in PATH, services, or configured locations')
     }
     if ($Tool.Type -eq 'cluster') { return (Initialize-DockerDesktopKubernetes -Tool $Tool) }
     if ($Tool.Type -eq 'manual') {
@@ -420,9 +480,9 @@ function Install-Application {
             Invoke-NpmInstall -Tool $Tool
             Update-SessionPath
             if (Test-Application -Tool $Tool) {
-                return (New-InstallResult $Tool 'Installed' 'npm' 'Installation and verification succeeded')
+                return (New-InstallResult $Tool 'Installed' 'npm' 'Installer completed; installation footprint detected (execution not tested)')
             }
-            return (New-InstallResult $Tool 'VerificationPending' 'npm' 'npm succeeded but CLI not yet visible; open a new terminal')
+            return (New-InstallResult $Tool 'VerificationPending' 'npm' 'npm completed but CLI is not detected yet; open a new terminal')
         }
         catch [System.TimeoutException] {
             return (New-InstallResult $Tool 'VerificationPending' 'npm' $_.Exception.Message)
@@ -465,7 +525,7 @@ function Install-Application {
             Update-SessionPath
             try {
                 if (Test-Application -Tool $Tool) {
-                    return (New-InstallResult $Tool 'Installed' $candidate 'Installation and verification succeeded')
+                    return (New-InstallResult $Tool 'Installed' $candidate 'Installer completed; installation footprint detected (execution not tested)')
                 }
             }
             catch [System.TimeoutException] {
@@ -476,7 +536,7 @@ function Install-Application {
             $note = if ($Tool.Key -eq 'MySQL') {
                 'Package installed; configure/start the MySQL service and credentials, then verify again.'
             } else {
-                'Installer succeeded but command is not available yet; reopen the terminal or reboot and verify again.'
+                'Installer completed but installation footprint is not detected; reopen terminal or reboot then verify.'
             }
             Write-Host "[WARNING] $($Tool.Name): $note" -ForegroundColor Yellow
             return (New-InstallResult $Tool 'VerificationPending' $candidate $note)

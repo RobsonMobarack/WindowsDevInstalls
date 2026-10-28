@@ -59,7 +59,7 @@ The installer returns `ActionRequired` until you finish this stage. No `kubectl 
 
 ## MySQL
 
-`Oracle.MySQL` is the WinGet package. A package installation alone does not guarantee a configured or running server. This app verifies **a running MySQL service**; if it is not ready, reports `VerificationPending`, so configure the service and credentials following MySQL documentation. The script does **not** generate or log a database root password.
+`Oracle.MySQL` is the WinGet package. A package installation alone does not guarantee a configured or running server. This app detects the MySQL server executable or an installed MySQL service. A stopped service is still **installed**, but may not be ready for use; configure the service and credentials following MySQL documentation. The script does **not** generate or log a database root password.
 
 ## Install engines and direct downloads
 
@@ -82,7 +82,7 @@ The placeholders are **not** functional. Pin the vendor URL to a specific versio
 
 ## Exit codes and result states
 
-`Installed`, `AlreadyInstalled`, `Planned`, `VerificationPending`, `ActionRequired`, `Blocked`, `Failed`.
+`Installed`, `AlreadyInstalled`, `NotInstalled`, `NotReady`, `DetectedUnverified`, `Planned`, `VerificationPending`, `ActionRequired`, `Blocked`, `Failed`.
 
 - `0`: all completed or planned.
 - `1`: one or more failures.
@@ -152,11 +152,35 @@ Check on **Windows PowerShell 5.1**, without installing anything:
 ran outside of Windows and is not a substitute for executing SmokeTest.ps1
 in Windows PowerShell 5.1.
 
-
 ## v2.4 — Safe preview and bounded executable checks
 
 - `-DryRun` and the GUI **Preview (dry run)** button are now metadata-only previews: no installers, `--version` commands, or Kubernetes API calls run. Existing command paths are displayed as `DetectedUnverified` (present on disk/PATH, *not* validated), while absent tools are `Planned`.
-- Actual checks (including `-VerifyOnly` and post-install probes) now use a bounded external process with a default 10-second timeout. A timeout is recorded as `VerificationPending`, not interpreted as permission to install another package copy.
+- An optional functional probe (`Test-Application -Functional`) uses a bounded external process with a default 10-second timeout. Regular `-VerifyOnly` and post-install checks detect installation footprints without launching third-party programs.
 - Running an installer itself (WinGet, npm, Chocolatey, Scoop) is not time-bounded yet; this is a different path from the version/probe checks.
 - `Tests/ProbeTimeoutTest.ps1` is a Windows-only regression check for the timeout. It launches a child PowerShell process that intentionally sleeps five seconds and checks that it is stopped after one second. No installs occur.
 - Closing the GUI while a child process is running does **not** currently cancel that process; use Task Manager to terminate the child Windows PowerShell process if required.
+
+## v2.5: Verification semantics and Qt SDK detection
+
+`-VerifyOnly` / **Verify installed** checks installation presence. It does not launch
+`--version` and does not install or change packages. Status `AlreadyInstalled`
+means the executable, service, or documented installation footprint was found;
+it **does not** promise that a service is running or a CLI is fully functional.
+`NotInstalled` means it was not detected, not absolute proof of absence.
+Docker Desktop Kubernetes uses the stricter `NotReady` status when its
+`docker-desktop` context is absent or has no Ready nodes; a local cluster is
+not automatically created during verification. The Preview button also detects
+Qt SDK installations, using CMake config files and Qt binaries.
+
+Qt installations outside usual locations can be specified for the current
+session before opening the GUI:
+
+```powershell
+$env:WINDOWSDEVINSTALLS_QT_ROOT = 'D:\Qt'
+.\WindowsDevInstalls.ps1 -Gui -DryRun
+```
+
+The path should point to a Qt root, a versioned kit, or a CMake prefix.
+Qt Creator alone is not evidence of an installed Qt SDK. The `Jdtls`
+installation check deliberately avoids starting the language server.
+Use `-DryRun`, `-VerifyOnly` and `Tests/SmokeTest.ps1` before a real install.

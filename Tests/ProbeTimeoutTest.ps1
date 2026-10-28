@@ -11,7 +11,7 @@ $slow = [pscustomobject]@{
 }
 $watch = [System.Diagnostics.Stopwatch]::StartNew()
 $timedOut = $false
-try { [void](Test-Application -Tool $slow -TimeoutSeconds 1) }
+try { [void](Test-Application -Tool $slow -TimeoutSeconds 1 -Functional) }
 catch [System.TimeoutException] { $timedOut = $true }
 $watch.Stop()
 if (-not $timedOut) { throw 'Expected a timeout from the slow verification probe.' }

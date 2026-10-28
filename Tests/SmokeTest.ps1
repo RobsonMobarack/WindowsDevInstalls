@@ -36,3 +36,40 @@ if ($previewResult.Status -ne 'DetectedUnverified') {
     throw "DryRun did not return DetectedUnverified for available command: $($previewResult.Status)"
 }
 Write-Host 'PASS: DryRun detects executables without executing them.' -ForegroundColor Green
+
+# Regression: VerifyOnly must report a detected executable without invoking it.
+$markerVerify = Join-Path $env:TEMP ("windowsdevinstalls-verify-$PID.txt")
+if (Test-Path -LiteralPath $markerVerify) { Remove-Item -LiteralPath $markerVerify -Force }
+$fakeVerify = [pscustomobject]@{
+    Key='FakeVerify'; Name='Fake verify'; Type='package'; Command='cmd.exe'
+    ProbeArgs=@('/c', ('echo SHOULD_NOT_EXIST > "' + $markerVerify + '"'))
+    ProbePaths=@(); DependsOn=@()
+}
+$verification = Install-Application -Tool $fakeVerify -VerifyOnly
+if ($verification.Status -ne 'AlreadyInstalled') { throw "VerifyOnly gave unexpected status: $($verification.Status)" }
+if (Test-Path -LiteralPath $markerVerify) { throw 'VerifyOnly ran an executable probe!' }
+$fakeMissing = [pscustomobject]@{
+    Key='FakeMissing'; Name='Fake missing'; Type='package'; Command='windowsdevinstalls-nonexistent-xyz.exe'
+    ProbeArgs=@('--version'); ProbePaths=@(); DependsOn=@()
+}
+$missing = Install-Application -Tool $fakeMissing -VerifyOnly
+if ($missing.Status -ne 'NotInstalled') { throw "Missing tool gave status $($missing.Status), expected NotInstalled." }
+Write-Host 'PASS: VerifyOnly detects a known executable and reports missing tools without launching them.' -ForegroundColor Green
+
+# Regression: locate a Qt kit outside PATH without needing an actual Qt installation.
+$fakeQtRoot = Join-Path $env:TEMP ("windowsdevinstalls-qt-$PID")
+$oldQtRoot = $env:WINDOWSDEVINSTALLS_QT_ROOT
+try {
+    $kitBin = Join-Path $fakeQtRoot '6.9.1\mingw_64\bin'
+    [void](New-Item -ItemType Directory -Path $kitBin -Force)
+    [void](New-Item -ItemType File -Path (Join-Path $kitBin 'qmake.exe') -Force)
+    $env:WINDOWSDEVINSTALLS_QT_ROOT = $fakeQtRoot
+    $qtTool = (Get-ToolCatalog | Where-Object { $_.Key -eq 'Qt' } | Select-Object -First 1)
+    $qt = Install-Application -Tool $qtTool -VerifyOnly
+    if ($qt.Status -ne 'AlreadyInstalled') { throw "Qt kit was not found: $($qt.Status)" }
+    Write-Host 'PASS: Qt SDK detection works outside PATH with a configured installation root.' -ForegroundColor Green
+}
+finally {
+    $env:WINDOWSDEVINSTALLS_QT_ROOT = $oldQtRoot
+    Remove-Item -LiteralPath $fakeQtRoot -Recurse -Force -ErrorAction SilentlyContinue
+}

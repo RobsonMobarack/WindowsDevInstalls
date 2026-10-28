@@ -1,4 +1,4 @@
-#requires -Version 5.1
+﻿#requires -Version 5.1
 [CmdletBinding()]
 param(
     [string[]]$Technologies = @(),
@@ -68,7 +68,7 @@ try {
     Write-Host "`n=== Installation summary ===" -ForegroundColor Cyan
     $results | Format-Table Name, Status, Manager, Message -AutoSize -Wrap | Out-Host
     if (@($results | Where-Object { $_.Status -eq 'Failed' }).Count -gt 0) { $exitCode = 1 }
-    elseif (@($results | Where-Object { $_.Status -in @('VerificationPending','ActionRequired','Blocked') }).Count -gt 0) { $exitCode = 2 }
+    elseif (@($results | Where-Object { $_.Status -in @('VerificationPending','ActionRequired','Blocked','NotReady','NotInstalled') }).Count -gt 0) { $exitCode = 2 }
 }
 catch {
     Write-Host "[ERROR] $($_.Exception.Message)" -ForegroundColor Red
