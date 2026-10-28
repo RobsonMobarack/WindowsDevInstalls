@@ -1,8 +1,17 @@
 #requires -Version 5.1
+[CmdletBinding()]
+param([switch]$DryRun)
 Set-StrictMode -Version Latest
 Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase
-Import-Module (Join-Path (Split-Path -Parent $PSScriptRoot) 'WindowsDevInstalls.Core.psm1') -Force
-Import-Module (Join-Path (Split-Path -Parent $PSScriptRoot) 'WindowsDevInstalls.Plan.psm1') -Force
+# These imports are also safe when opening this UI file directly.
+# Do not force-reload dependencies that might already be in the caller's scope.
+Import-Module (Join-Path (Split-Path -Parent $PSScriptRoot) 'WindowsDevInstalls.Plan.psm1') -ErrorAction Stop
+Import-Module (Join-Path (Split-Path -Parent $PSScriptRoot) 'WindowsDevInstalls.Core.psm1') -ErrorAction Stop
+foreach ($functionName in @('Get-ToolCatalog', 'Get-TechnologyCatalog', 'Resolve-InstallPlan')) {
+    if ($null -eq (Get-Command -Name $functionName -CommandType Function -ErrorAction SilentlyContinue)) {
+        throw "Required GUI function '$functionName' is unavailable. Check the module imports."
+    }
+}
 $root = Split-Path -Parent $PSScriptRoot
 $script:technologyCatalog = @(Get-TechnologyCatalog)
 $script:toolCatalog = @(Get-ToolCatalog)
@@ -11,6 +20,7 @@ $script:process = $null
 $script:outputPath = $null
 $script:errorPath = $null
 $script:running = $false
+$script:previewOnly = [bool]$DryRun
 
 [xml]$xaml = @'
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -81,6 +91,11 @@ $progress = $window.FindName('Progress')
 $installButton = $window.FindName('InstallButton')
 $dryButton = $window.FindName('DryRunButton')
 $verifyButton = $window.FindName('VerifyButton')
+if ($script:previewOnly) {
+    $window.Title = 'WindowsDevInstalls - Preview only (no installation)'
+    $installButton.IsEnabled = $false
+    $installButton.ToolTip = 'Disabled because -Gui -DryRun was used.'
+}
 $base = @($script:toolCatalog | Where-Object { $_.Required })
 $baseTitle.Text = "$($base.Count) core tools included automatically"
 $baseCaption.Text = ($base.Name -join '  |  ')
@@ -121,6 +136,10 @@ function Update-Plan {
 function Start-Installation {
     param([string]$Mode)
     if ($script:running) { return }
+    if ($script:previewOnly -and $Mode -eq 'Install') {
+        $console.Text = 'Preview-only mode: installation is disabled. Use Preview (dry run) to plan without changing installed applications.'
+        return
+    }
     $logDir = Join-Path $root 'Logs'
     if (-not (Test-Path -LiteralPath $logDir)) { [void](New-Item -ItemType Directory -Path $logDir -Force) }
     $id = "{0}-{1}" -f (Get-Date -Format 'yyyyMMdd-HHmmss'),$PID
@@ -166,7 +185,7 @@ $timer.Add_Tick({
         if ($script:process.HasExited) {
             $script:running = $false
             $progress.Visibility = 'Collapsed'
-            $installButton.IsEnabled = $true
+            $installButton.IsEnabled = (-not $script:previewOnly)
             $dryButton.IsEnabled = $true
             $verifyButton.IsEnabled = $true
             $console.AppendText("`r`nProcess finished with exit code $($script:process.ExitCode).`r`n")

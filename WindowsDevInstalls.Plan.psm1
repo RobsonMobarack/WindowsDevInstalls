@@ -1,7 +1,9 @@
 #requires -Version 5.1
 Set-StrictMode -Version Latest
 
-Import-Module (Join-Path $PSScriptRoot 'WindowsDevInstalls.Core.psm1') -Force
+# Core is a dependency of Plan. Import into this module's scope without
+# forcing a reload of the copy already visible in other scopes.
+Import-Module (Join-Path $PSScriptRoot 'WindowsDevInstalls.Core.psm1') -ErrorAction Stop
 
 function Get-TechnologyCatalog {
     [CmdletBinding()]

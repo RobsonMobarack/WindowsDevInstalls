@@ -98,3 +98,15 @@ Invoke-Pester .\Tests\WindowsDevInstalls.Tests.ps1
 ```
 
 For a first real installation, test in a disposable Windows 11 VM. No Windows, Docker, WinGet or WPF runtime was available where this project was generated; the catalog/dependency configuration has undergone static checks, **not a real end-to-end Windows test**.
+
+
+## v2.1 module-import and GUI preview fix
+
+The previous v2 release repeatedly used `Import-Module -Force` while both the plan and GUI depended on `WindowsDevInstalls.Core.psm1`. This could make public functions such as `Get-ToolCatalog` unavailable in a subsequent scope. The new build loads Plan and Core without forced reloads and checks public exports before opening the UI.
+
+- `./WindowsDevInstalls.ps1 -Gui` starts the interface with installation enabled.
+- `./WindowsDevInstalls.ps1 -Gui -DryRun` starts the interface with **Install selected** disabled; **Preview (dry run)** remains enabled.
+- `./WindowsDevInstalls.ps1 -List` checks both catalogs.
+- `Invoke-Pester ./Tests/WindowsDevInstalls.Tests.ps1` exercises exports and dependency rules (requires Pester).
+
+This build was statically reviewed but could not be executed on Windows in the build environment. Run the dry-run first before any installation.

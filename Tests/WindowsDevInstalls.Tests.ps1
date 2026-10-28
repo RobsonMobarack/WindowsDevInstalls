@@ -1,8 +1,19 @@
 #requires -Version 5.1
 # Run with: Invoke-Pester .\Tests\WindowsDevInstalls.Tests.ps1
 $root = Split-Path -Parent $PSScriptRoot
-Import-Module (Join-Path $root 'WindowsDevInstalls.Core.psm1') -Force
-Import-Module (Join-Path $root 'WindowsDevInstalls.Plan.psm1') -Force
+Import-Module (Join-Path $root 'WindowsDevInstalls.Plan.psm1') -ErrorAction Stop
+Import-Module (Join-Path $root 'WindowsDevInstalls.Core.psm1') -ErrorAction Stop
+Describe 'WindowsDevInstalls module exports' {
+    It 'exposes the core catalog after both modules have loaded' {
+        (Get-Command -Name Get-ToolCatalog -CommandType Function -ErrorAction Stop).ModuleName | Should -Be 'WindowsDevInstalls.Core'
+        @(Get-ToolCatalog).Count | Should -BeGreaterThan 0
+    }
+    It 'exposes planning functions alongside Core functions' {
+        Get-Command -Name Resolve-InstallPlan -CommandType Function -ErrorAction Stop | Should -Not -BeNullOrEmpty
+        Get-Command -Name Get-TechnologyCatalog -CommandType Function -ErrorAction Stop | Should -Not -BeNullOrEmpty
+    }
+}
+
 Describe 'WindowsDevInstalls install plan' {
     It 'adds Docker and Firebase CLI for frontend' {
         $plan = @(Resolve-InstallPlan -Technologies @('Angular') -IncludeRequired:$false)

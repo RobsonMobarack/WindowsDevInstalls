@@ -15,14 +15,22 @@ param(
 )
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
-Import-Module (Join-Path $PSScriptRoot 'WindowsDevInstalls.Core.psm1') -Force
-Import-Module (Join-Path $PSScriptRoot 'WindowsDevInstalls.Plan.psm1') -Force
+# Load the dependency-aware module first, then explicitly expose Core in this scope.
+# Never use -Force here: Plan also depends on Core and forced reimports can
+# invalidate functions that have already been exported into another scope.
+Import-Module (Join-Path $PSScriptRoot 'WindowsDevInstalls.Plan.psm1') -ErrorAction Stop
+Import-Module (Join-Path $PSScriptRoot 'WindowsDevInstalls.Core.psm1') -ErrorAction Stop
+foreach ($functionName in @('Get-ToolCatalog', 'Get-TechnologyCatalog', 'Resolve-InstallPlan', 'Invoke-InstallPlan')) {
+    if ($null -eq (Get-Command -Name $functionName -CommandType Function -ErrorAction SilentlyContinue)) {
+        throw "Required WindowsDevInstalls function '$functionName' is unavailable. Check the .psm1 files next to WindowsDevInstalls.ps1."
+    }
+}
 
 if ($Gui) {
     if ([Environment]::OSVersion.Platform -ne [PlatformID]::Win32NT) {
         throw 'The WPF interface is only available on Windows.'
     }
-    & (Join-Path $PSScriptRoot 'UI\WindowsDevInstalls.Gui.ps1')
+    & (Join-Path $PSScriptRoot 'UI\WindowsDevInstalls.Gui.ps1') -DryRun:$DryRun
     return
 }
 if ($List) {
