@@ -14,6 +14,27 @@ Describe 'WindowsDevInstalls module exports' {
     }
 }
 
+Describe 'JSON catalog enumeration on Windows PowerShell 5.1' {
+    It 'emits each tool as a separate object, not one Object[]' {
+        $catalog = @(Get-ToolCatalog)
+        $catalog.Count | Should -Be 38
+        @($catalog | Where-Object { $_ -is [array] }).Count | Should -Be 0
+        $catalog[0].Key | Should -Be 'Git'
+    }
+    It 'emits each technology as a separate object, not one Object[]' {
+        $catalog = @(Get-TechnologyCatalog)
+        $catalog.Count | Should -Be 24
+        @($catalog | Where-Object { $_ -is [array] }).Count | Should -Be 0
+        $catalog[0].Key | Should -Be 'Ionic'
+    }
+    It 'produces a proper core-only dependency plan' {
+        $plan = @(Resolve-InstallPlan)
+        $plan.Count | Should -BeGreaterThan 8
+        $plan[0].Key | Should -Be 'Git'
+        @($plan | Where-Object { $_ -is [array] }).Count | Should -Be 0
+    }
+}
+
 Describe 'WindowsDevInstalls install plan' {
     It 'adds Docker and Firebase CLI for frontend' {
         $plan = @(Resolve-InstallPlan -Technologies @('Angular') -IncludeRequired:$false)

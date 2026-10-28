@@ -110,3 +110,23 @@ The previous v2 release repeatedly used `Import-Module -Force` while both the pl
 - `Invoke-Pester ./Tests/WindowsDevInstalls.Tests.ps1` exercises exports and dependency rules (requires Pester).
 
 This build was statically reviewed but could not be executed on Windows in the build environment. Run the dry-run first before any installation.
+
+## v2.2 PowerShell 5.1 JSON-array fix
+
+The JSON catalogs previously returned a nested `Object[]` as one pipeline value on
+Windows PowerShell 5.1. This caused `1 core tools`, a GUI checkbox labeled
+`Object[] Array`, and a single joined `Unknown tool dependency: Git FFmpeg ...`
+error. Both catalog functions now explicitly emit one entry at a time. The GUI
+contains the separate `StrictMode` `.Name` collection fixes from the prior hotfix.
+
+**Before installing anything**, from a new Windows PowerShell session:
+
+```powershell
+.\WindowsDevInstalls.ps1 -List
+.\WindowsDevInstalls.ps1 -Technologies Angular,Go -DryRun
+.\WindowsDevInstalls.ps1 -Gui -DryRun
+```
+
+Pester tests now verify that catalog functions return 38 separate tool records
+and 24 separate technology records. They need to be executed in a real Windows
+PowerShell runtime; validation on non-Windows platforms is only static.

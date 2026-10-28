@@ -9,7 +9,13 @@ function Get-TechnologyCatalog {
     [CmdletBinding()]
     param()
     $path = Join-Path $PSScriptRoot 'Config\technologies.json'
-    @(Get-Content -LiteralPath $path -Raw -Encoding UTF8 | ConvertFrom-Json)
+    # Emit each JSON entry independently (PowerShell 5.1 array semantics).
+    $catalog = Get-Content -LiteralPath $path -Raw -Encoding UTF8 |
+        ConvertFrom-Json -ErrorAction Stop
+
+    foreach ($technology in $catalog) {
+        Write-Output $technology
+    }
 }
 
 function Resolve-InstallPlan {

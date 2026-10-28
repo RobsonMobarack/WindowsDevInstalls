@@ -98,7 +98,7 @@ if ($script:previewOnly) {
 }
 $base = @($script:toolCatalog | Where-Object { $_.Required })
 $baseTitle.Text = "$($base.Count) core tools included automatically"
-$baseCaption.Text = ($base.Name -join '  |  ')
+$baseCaption.Text = (($base | ForEach-Object { $_.Name }) -join '  |  ')
 foreach ($category in @('Frontend','Backend','Language','Tooling')) {
     $tab = New-Object Windows.Controls.TabItem
     $tab.Header = if ($category -eq 'Language') { 'Languages' } elseif ($category -eq 'Tooling') { 'Tools & managers' } else { $category }
@@ -129,7 +129,7 @@ function Update-Plan {
         $resolved = @(Resolve-InstallPlan -Technologies $chosen)
         $summary.Text = "$($chosen.Count) technologies selected  |  $($resolved.Count) unique tools in the installation plan"
         $optional = @($resolved | Where-Object { -not $_.Required })
-        $planList.Text = if ($optional.Count) { $optional.Name -join '  |  ' } else { 'Only core tools will be checked.' }
+        $planList.Text = if ($optional.Count -gt 0) { ($optional | ForEach-Object { $_.Name }) -join '  |  ' } else { 'Only core tools will be checked.' }
     }
     catch { $summary.Text = $_.Exception.Message }
 }

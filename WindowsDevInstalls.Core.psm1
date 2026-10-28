@@ -6,7 +6,14 @@ function Get-ToolCatalog {
     param()
     $file = Join-Path $PSScriptRoot 'Config\tools.json'
     if (-not (Test-Path -LiteralPath $file)) { throw "Tool catalog not found: $file" }
-    @(Get-Content -LiteralPath $file -Raw -Encoding UTF8 | ConvertFrom-Json)
+    # ConvertFrom-Json may pass a JSON root array through as one pipeline
+    # object on Windows PowerShell 5.1. Emit each tool separately.
+    $catalog = Get-Content -LiteralPath $file -Raw -Encoding UTF8 |
+        ConvertFrom-Json -ErrorAction Stop
+
+    foreach ($tool in $catalog) {
+        Write-Output $tool
+    }
 }
 
 function Test-DockerDesktopKubernetes {
