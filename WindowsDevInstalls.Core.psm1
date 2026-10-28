@@ -2,61 +2,54 @@
 Set-StrictMode -Version Latest
 
 function Get-ToolCatalog {
-    <#
-      Catalog used by the CLI today and available to a future UI.
-      Direct installers are deliberately unset: add a trusted pinned HTTPS URL,
-      the exact file's SHA-256, installer type and silent arguments before using.
-    #>
-    @(
-        [pscustomobject]@{
-            Key = 'Git'; Name = 'Git'; Required = $true
-            Command = 'git'; ProbeArgs = @('--version')
-            ProbePaths = @('%ProgramFiles%\Git\cmd\git.exe', '%ProgramFiles%\Git\bin\git.exe')
-            WinGetId = 'Git.Git'; ChocolateyId = 'git'; ScoopId = 'git'; ScoopBucket = 'main'; Direct = $null
+    [CmdletBinding()]
+    param()
+    $file = Join-Path $PSScriptRoot 'Config\tools.json'
+    if (-not (Test-Path -LiteralPath $file)) { throw "Tool catalog not found: $file" }
+    @(Get-Content -LiteralPath $file -Raw -Encoding UTF8 | ConvertFrom-Json)
+}
+
+function Test-DockerDesktopKubernetes {
+    [CmdletBinding()]
+    param()
+    if ($null -eq (Get-Command kubectl -CommandType Application -ErrorAction SilentlyContinue)) {
+        # Prefer Docker Desktop's bundled kubectl when absent from PATH.
+        $candidates = @(
+            (Join-Path $env:ProgramFiles 'Docker\Docker\resources\bin'),
+            (Join-Path $env:LOCALAPPDATA 'Programs\DockerDesktop\resources\bin')
+        )
+        foreach ($candidate in $candidates) {
+            if (Test-Path -LiteralPath (Join-Path $candidate 'kubectl.exe')) {
+                $env:Path = "$candidate;$env:Path"
+                break
+            }
         }
-        [pscustomobject]@{
-            Key = 'FFmpeg'; Name = 'FFmpeg'; Required = $true
-            Command = 'ffmpeg'; ProbeArgs = @('-version')
-            ProbePaths = @()
-            WinGetId = 'Gyan.FFmpeg'; ChocolateyId = 'ffmpeg'; ScoopId = 'ffmpeg'; ScoopBucket = 'main'; Direct = $null
+    }
+    if ($null -eq (Get-Command kubectl -CommandType Application -ErrorAction SilentlyContinue)) { return $false }
+    try {
+        # Explicit context: never mutate the user's selected Kubernetes context.
+        $raw = & kubectl --context docker-desktop get nodes -o json --request-timeout=8s 2>$null
+        if ($LASTEXITCODE -ne 0) { return $false }
+        $data = (($raw | Out-String) | ConvertFrom-Json -ErrorAction Stop)
+        foreach ($node in @($data.items)) {
+            foreach ($condition in @($node.status.conditions)) {
+                if ($condition.type -eq 'Ready' -and $condition.status -eq 'True') { return $true }
+            }
         }
-        [pscustomobject]@{
-            Key = '7Zip'; Name = '7-Zip'; Required = $false
-            Command = '7z'; ProbeArgs = @('i')
-            ProbePaths = @('%ProgramFiles%\7-Zip\7z.exe', '%ProgramFiles(x86)%\7-Zip\7z.exe')
-            WinGetId = '7zip.7zip'; ChocolateyId = '7zip'; ScoopId = '7zip'; ScoopBucket = 'main'; Direct = $null
-        }
-        [pscustomobject]@{
-            Key = 'Alacritty'; Name = 'Alacritty'; Required = $false
-            Command = 'alacritty'; ProbeArgs = @('--version')
-            ProbePaths = @('%ProgramFiles%\Alacritty\alacritty.exe', '%LOCALAPPDATA%\Programs\Alacritty\alacritty.exe')
-            WinGetId = 'Alacritty.Alacritty'; ChocolateyId = 'alacritty'; ScoopId = 'alacritty'; ScoopBucket = 'extras'; Direct = $null
-        }
-        [pscustomobject]@{
-            Key = 'ImageMagick'; Name = 'ImageMagick'; Required = $false
-            Command = 'magick'; ProbeArgs = @('-version')
-            ProbePaths = @('%ProgramFiles%\ImageMagick-*\magick.exe')
-            WinGetId = 'ImageMagick.Q16-HDRI'; ChocolateyId = 'imagemagick'; ScoopId = 'imagemagick'; ScoopBucket = 'main'; Direct = $null
-        }
-        [pscustomobject]@{
-            Key = 'Neovim'; Name = 'Neovim'; Required = $false
-            Command = 'nvim'; ProbeArgs = @('--version')
-            ProbePaths = @('%ProgramFiles%\Neovim\bin\nvim.exe', '%LOCALAPPDATA%\Programs\Neovim\bin\nvim.exe')
-            WinGetId = 'Neovim.Neovim'; ChocolateyId = 'neovim'; ScoopId = 'neovim'; ScoopBucket = 'main'; Direct = $null
-        }
-        [pscustomobject]@{
-            Key = 'VSCode'; Name = 'Visual Studio Code'; Required = $false
-            Command = 'code'; ProbeArgs = @('--version')
-            ProbePaths = @('%LOCALAPPDATA%\Programs\Microsoft VS Code\bin\code.cmd', '%ProgramFiles%\Microsoft VS Code\bin\code.cmd')
-            WinGetId = 'Microsoft.VisualStudioCode'; ChocolateyId = 'vscode'; ScoopId = 'vscode'; ScoopBucket = 'extras'; Direct = $null
-        }
-        [pscustomobject]@{
-            Key = 'WezTerm'; Name = 'WezTerm'; Required = $false
-            Command = 'wezterm'; ProbeArgs = @('--version')
-            ProbePaths = @('%ProgramFiles%\WezTerm\wezterm.exe', '%LOCALAPPDATA%\Programs\WezTerm\wezterm.exe')
-            WinGetId = 'wez.wezterm'; ChocolateyId = 'wezterm'; ScoopId = 'wezterm'; ScoopBucket = 'extras'; Direct = $null
-        }
-    )
+    }
+    catch { return $false }
+    return $false
+}
+
+function Test-DockerWSL {
+    [CmdletBinding()]
+    param()
+    if ($null -eq (Get-Command 'wsl.exe' -ErrorAction SilentlyContinue)) { return $false }
+    try {
+        & wsl.exe --version *> $null
+        return ($LASTEXITCODE -eq 0)
+    }
+    catch { return $false }
 }
 
 function Get-ApplicationExecutable {
@@ -80,18 +73,39 @@ function Get-ApplicationExecutable {
 function Test-Application {
     [CmdletBinding()]
     param([Parameter(Mandatory)]$Tool)
-
+    if ($Tool.Type -eq 'cluster') { return (Test-DockerDesktopKubernetes) }
+    if ($Tool.Type -eq 'manual') {
+        if ($Tool.Key -eq 'Scoop') {
+            return ($null -ne (Get-Command scoop -ErrorAction SilentlyContinue))
+        }
+        return ($false)
+    }
+    if ($Tool.Key -eq 'Docker') {
+        # The docker CLI alone is not proof that Docker Desktop is installed.
+        $desktopLocations = @(
+            (Join-Path $env:ProgramFiles 'Docker\Docker\Docker Desktop.exe'),
+            (Join-Path $env:LOCALAPPDATA 'Programs\DockerDesktop\Docker Desktop.exe')
+        )
+        $desktopPresent = $false
+        foreach ($location in $desktopLocations) {
+            if (Test-Path -LiteralPath $location) { $desktopPresent = $true; break }
+        }
+        if (-not $desktopPresent) { return $false }
+    }
+    if ($Tool.Key -eq 'MySQL') {
+        # Installed MySQL client binaries do not prove that a server is running.
+        $service = Get-Service -Name 'MySQL*' -ErrorAction SilentlyContinue |
+            Where-Object { $_.Status -eq 'Running' } | Select-Object -First 1
+        return ($null -ne $service)
+    }
     $executable = Get-ApplicationExecutable -Tool $Tool
     if ([string]::IsNullOrWhiteSpace($executable)) { return $false }
-
     try {
-        # Both existence AND successful execution matter.
-        & $executable @($Tool.ProbeArgs) *> $null
+        $probeArgs = @($Tool.ProbeArgs)
+        & $executable @probeArgs *> $null
         return ($LASTEXITCODE -eq 0)
     }
-    catch {
-        return $false
-    }
+    catch { return $false }
 }
 
 function Update-SessionPath {
@@ -103,7 +117,11 @@ function Update-SessionPath {
         (Join-Path $env:LOCALAPPDATA 'Microsoft\WinGet\Links'),
         (Join-Path $env:ProgramFiles 'WinGet\Links'),
         (Join-Path $env:USERPROFILE 'scoop\shims'),
-        (Join-Path $env:ProgramData 'chocolatey\bin')
+        (Join-Path $env:ProgramData 'chocolatey\bin'),
+        (Join-Path $env:APPDATA 'npm'),
+        (Join-Path $env:USERPROFILE '.cargo\bin'),
+        (Join-Path $env:ProgramFiles 'Docker\Docker\resources\bin'),
+        (Join-Path $env:LOCALAPPDATA 'Programs\DockerDesktop\resources\bin')
     )
 
     $sources = @(
@@ -227,6 +245,37 @@ function Invoke-DirectInstall {
     }
 }
 
+function Invoke-NpmInstall {
+    [CmdletBinding()]
+    param([Parameter(Mandatory)]$Tool)
+    if ([string]::IsNullOrWhiteSpace($Tool.NpmPackage)) { throw 'Missing npm package.' }
+    # npm.cmd avoids npm.ps1 execution-policy failures on Windows PowerShell.
+    $npm = Get-Command 'npm.cmd' -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
+    if ($null -eq $npm) { throw 'npm.cmd is missing. Install Node.js first, then retry.' }
+    Invoke-NativeInstaller -Command $npm.Source -Arguments @('install', '--global', $Tool.NpmPackage, '--no-audit', '--no-fund')
+}
+
+function Initialize-DockerDesktopKubernetes {
+    [CmdletBinding()]
+    param($Tool)
+    if (Test-DockerDesktopKubernetes) {
+        return (New-InstallResult $Tool 'AlreadyInstalled' '-' 'Docker Desktop Kubernetes has a Ready node')
+    }
+    if (-not (Test-DockerWSL)) {
+        return (New-InstallResult $Tool 'ActionRequired' '-' 'WSL 2 is missing or outdated. Run wsl --install or wsl --update in elevated PowerShell; reboot if requested.')
+    }
+    try {
+        if ($null -ne (Get-Command docker -CommandType Application -ErrorAction SilentlyContinue)) {
+            # Official CLI can start Docker Desktop, but it has no supported create-cluster command.
+            & docker desktop start *> $null
+        }
+    }
+    catch { }
+    $instructions = 'In Docker Desktop: Kubernetes > Create cluster > kind > 1 node > Create. Keep Linux containers mode. Then run -VerifyOnly (or Refresh in the UI).'
+    Write-Host "[ACTION REQUIRED] $instructions" -ForegroundColor Yellow
+    return (New-InstallResult $Tool 'ActionRequired' 'Docker Desktop UI' $instructions)
+}
+
 function New-InstallResult {
     param($Tool, [string]$Status, [string]$Manager, [string]$Message)
     [pscustomobject]@{
@@ -244,23 +293,50 @@ function Install-Application {
         [Parameter(Mandatory)]$Tool,
         [ValidateSet('Auto', 'WinGet', 'Chocolatey', 'Scoop', 'Direct')]
         [string]$Manager = 'Auto',
-        [switch]$DryRun
+        [switch]$DryRun,
+        [switch]$VerifyOnly
     )
 
+    Update-SessionPath
     if (Test-Application -Tool $Tool) {
-        Write-Host "[OK] $($Tool.Name) is already installed." -ForegroundColor Green
-        return New-InstallResult $Tool 'AlreadyInstalled' '-' 'Already working'
+        Write-Host "[OK] $($Tool.Name) is already available." -ForegroundColor Green
+        return (New-InstallResult $Tool 'AlreadyInstalled' '-' 'Verification succeeded')
     }
-
+    if ($VerifyOnly) {
+        return (New-InstallResult $Tool 'VerificationPending' '-' 'Not detected or not yet ready')
+    }
     if ($DryRun) {
-        Write-Host "[PLAN] Would install $($Tool.Name) using $Manager." -ForegroundColor Cyan
-        return New-InstallResult $Tool 'Planned' $Manager 'No changes made'
+        Write-Host "[PLAN] $($Tool.Name) [$($Tool.Type)]" -ForegroundColor Cyan
+        return (New-InstallResult $Tool 'Planned' $Manager 'No changes made')
+    }
+    if ($Tool.Type -eq 'cluster') { return (Initialize-DockerDesktopKubernetes -Tool $Tool) }
+    if ($Tool.Type -eq 'manual') {
+        $guide = if ($Tool.Key -eq 'Scoop') {
+            'Scoop bootstrap is guided for security. Review https://scoop.sh/ and follow its official installation instructions.'
+        } else { 'Manual installation/configuration required. See README.' }
+        return (New-InstallResult $Tool 'ActionRequired' 'Manual' $guide)
+    }
+    if ($Tool.Type -eq 'npm') {
+        try {
+            Write-Host "[INSTALL] $($Tool.Name) via npm..." -ForegroundColor Gray
+            Invoke-NpmInstall -Tool $Tool
+            Update-SessionPath
+            if (Test-Application -Tool $Tool) {
+                return (New-InstallResult $Tool 'Installed' 'npm' 'Installation and verification succeeded')
+            }
+            return (New-InstallResult $Tool 'VerificationPending' 'npm' 'npm succeeded but CLI not yet visible; open a new terminal')
+        }
+        catch { return (New-InstallResult $Tool 'Failed' 'npm' $_.Exception.Message) }
+    }
+    if ($Tool.Key -eq 'NVM' -and $null -ne (Get-Command node -ErrorAction SilentlyContinue)) {
+        return (New-InstallResult $Tool 'ActionRequired' '-' 'Standalone Node.js is already on PATH. Resolve Node/NVM conflict before proceeding.')
+    }
+    if ($Tool.Key -eq 'Docker' -and -not (Test-DockerWSL)) {
+        return (New-InstallResult $Tool 'ActionRequired' '-' 'Set up WSL 2 first with wsl --install / wsl --update as administrator; reboot if necessary.')
     }
 
-    Write-Host "[MISSING] $($Tool.Name) is not available." -ForegroundColor Yellow
     $managers = if ($Manager -eq 'Auto') { @('WinGet', 'Chocolatey', 'Scoop', 'Direct') } else { @($Manager) }
     $errors = New-Object 'System.Collections.Generic.List[string]'
-
     foreach ($candidate in $managers) {
         if ($candidate -eq 'Direct') {
             if ($null -eq $Tool.Direct) { continue }
@@ -273,11 +349,10 @@ function Install-Application {
             }
             if ([string]::IsNullOrWhiteSpace($id)) { continue }
             if (-not (Test-PackageManager -Manager $candidate)) {
-                [void]$errors.Add("$candidate is not installed")
+                [void]$errors.Add("$candidate is not available")
                 continue
             }
         }
-
         try {
             Write-Host "[INSTALL] $($Tool.Name) via $candidate..." -ForegroundColor Gray
             switch ($candidate) {
@@ -286,31 +361,30 @@ function Install-Application {
                 Scoop { Invoke-ScoopInstall -Tool $Tool }
                 Direct { Invoke-DirectInstall -Tool $Tool }
             }
-
             Update-SessionPath
             if (Test-Application -Tool $Tool) {
-                Write-Host "[OK] $($Tool.Name) installed successfully via $candidate." -ForegroundColor Green
-                return New-InstallResult $Tool 'Installed' $candidate 'Installation and verification succeeded'
+                return (New-InstallResult $Tool 'Installed' $candidate 'Installation and verification succeeded')
             }
-
-            $message = 'Installer reported success, but the application is not executable in this session. Restart the terminal and verify again.'
-            Write-Host "[WARNING] $($Tool.Name): $message" -ForegroundColor Yellow
-            return New-InstallResult $Tool 'VerificationPending' $candidate $message
+            # A successful installer must not trigger another package manager.
+            $note = if ($Tool.Key -eq 'MySQL') {
+                'Package installed; configure/start the MySQL service and credentials, then verify again.'
+            } else {
+                'Installer succeeded but command is not available yet; reopen the terminal or reboot and verify again.'
+            }
+            Write-Host "[WARNING] $($Tool.Name): $note" -ForegroundColor Yellow
+            return (New-InstallResult $Tool 'VerificationPending' $candidate $note)
         }
         catch {
             $message = $_.Exception.Message
             Write-Host "[ERROR] $candidate failed for $($Tool.Name): $message" -ForegroundColor Red
-            [void]$errors.Add("$candidate`: $message")
-            # Do not install another copy if a direct MSI reports that reboot is needed.
-            if ($candidate -eq 'Direct' -and $message -like '*requires a restart*') {
-                return New-InstallResult $Tool 'VerificationPending' $candidate $message
+            [void]$errors.Add("${candidate}: $message")
+            if ($message -like '*requires a restart*') {
+                return (New-InstallResult $Tool 'VerificationPending' $candidate $message)
             }
         }
     }
-
-    $detail = if ($errors.Count -gt 0) { $errors -join ' | ' } else { 'No usable installation method was configured.' }
-    Write-Host "[ERROR] Unable to install $($Tool.Name). $detail" -ForegroundColor Red
-    return New-InstallResult $Tool 'Failed' '-' $detail
+    $detail = if ($errors.Count) { $errors -join ' | ' } else { 'No configured installation method is available.' }
+    return (New-InstallResult $Tool 'Failed' '-' $detail)
 }
 
-Export-ModuleMember -Function Get-ToolCatalog, Test-Application, Update-SessionPath, Install-Application
+Export-ModuleMember -Function Get-ToolCatalog, Test-Application, Test-DockerDesktopKubernetes, Test-DockerWSL, Update-SessionPath, Install-Application

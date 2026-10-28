@@ -1,0 +1,233 @@
+[
+  {
+    "Key": "Ionic",
+    "Name": "Ionic + Angular",
+    "Category": "Frontend",
+    "Tools": [
+      "IonicCLI",
+      "AngularCLI"
+    ],
+    "Description": "Ionic always uses Angular in this installer."
+  },
+  {
+    "Key": "Angular",
+    "Name": "Angular",
+    "Category": "Frontend",
+    "Tools": [
+      "AngularCLI"
+    ],
+    "Description": "Angular CLI global; project TypeScript stays project-local."
+  },
+  {
+    "Key": "React",
+    "Name": "React",
+    "Category": "Frontend",
+    "Tools": [
+      "Node"
+    ],
+    "Description": "React project scaffolding: npm create vite@latest."
+  },
+  {
+    "Key": "Vue",
+    "Name": "Vue.js",
+    "Category": "Frontend",
+    "Tools": [
+      "Node"
+    ],
+    "Description": "Vue projects: npm create vue@latest (create-vue)."
+  },
+  {
+    "Key": "Vite",
+    "Name": "Vite",
+    "Category": "Frontend",
+    "Tools": [
+      "ViteCLI"
+    ],
+    "Description": "Explicit Vite selection installs the global vite CLI; projects should pin their own versions."
+  },
+  {
+    "Key": "NestJS",
+    "Name": "NestJS",
+    "Category": "Backend",
+    "Tools": [
+      "NestCLI"
+    ],
+    "Description": "Nest CLI and Node.js."
+  },
+  {
+    "Key": "Express",
+    "Name": "Express.js",
+    "Category": "Backend",
+    "Tools": [
+      "Node"
+    ],
+    "Description": "Express is installed per-project, not globally."
+  },
+  {
+    "Key": "Go",
+    "Name": "Go",
+    "Category": "Backend",
+    "Tools": [
+      "Go",
+      "Make"
+    ],
+    "Description": "Backend profile: Go SDK and common infrastructure."
+  },
+  {
+    "Key": "Java",
+    "Name": "Java",
+    "Category": "Backend",
+    "Tools": [
+      "JDK",
+      "Maven",
+      "Jdtls"
+    ],
+    "Description": "Backend profile: Temurin JDK and Maven."
+  },
+  {
+    "Key": "PythonBackend",
+    "Name": "Python (backend)",
+    "Category": "Backend",
+    "Tools": [
+      "Python"
+    ],
+    "Description": "Python backend profile and infrastructure."
+  },
+  {
+    "Key": "RustBackend",
+    "Name": "Rust (backend)",
+    "Category": "Backend",
+    "Tools": [
+      "Rustup",
+      "Make"
+    ],
+    "Description": "Rust backend profile and infrastructure."
+  },
+  {
+    "Key": "C",
+    "Name": "C",
+    "Category": "Language",
+    "Tools": [
+      "LLVM",
+      "CMake",
+      "Ninja",
+      "Make"
+    ],
+    "Description": "C build environment; may need Windows SDK/linker."
+  },
+  {
+    "Key": "Cpp",
+    "Name": "C++",
+    "Category": "Language",
+    "Tools": [
+      "LLVM",
+      "CMake",
+      "Ninja",
+      "Make"
+    ],
+    "Description": "C++ build environment; may need Windows SDK/linker."
+  },
+  {
+    "Key": "Python",
+    "Name": "Python (standalone)",
+    "Category": "Language",
+    "Tools": [
+      "Python"
+    ],
+    "Description": "Python interpreter only."
+  },
+  {
+    "Key": "Rust",
+    "Name": "Rust (standalone)",
+    "Category": "Language",
+    "Tools": [
+      "Rustup",
+      "Make"
+    ],
+    "Description": "Rustup; MSVC build tools may also be required."
+  },
+  {
+    "Key": "Lua",
+    "Name": "Lua",
+    "Category": "Language",
+    "Tools": [
+      "Lua"
+    ],
+    "Description": "Lua runtime."
+  },
+  {
+    "Key": "TypeScript",
+    "Name": "TypeScript standalone",
+    "Category": "Language",
+    "Tools": [
+      "TypeScriptCLI"
+    ],
+    "Description": "Install global tsc for standalone usage."
+  },
+  {
+    "Key": "Qt",
+    "Name": "Qt (C++)",
+    "Category": "Language",
+    "Tools": [
+      "LLVM",
+      "CMake",
+      "Ninja",
+      "Qt"
+    ],
+    "Description": "Qt is guided (official online installer), not silently installed."
+  },
+  {
+    "Key": "Jdtls",
+    "Name": "JDTLS language server",
+    "Category": "Language",
+    "Tools": [
+      "Jdtls"
+    ],
+    "Description": "Eclipse JDT LS from the Scoop main bucket; requires Scoop and Python."
+  },
+  {
+    "Key": "Nvm",
+    "Name": "NVM for Windows",
+    "Category": "Tooling",
+    "Tools": [
+      "NVM"
+    ],
+    "Description": "Optional Node version manager. Do not combine with standalone Node.js LTS package."
+  },
+  {
+    "Key": "Chocolatey",
+    "Name": "Chocolatey",
+    "Category": "Tooling",
+    "Tools": [
+      "Chocolatey"
+    ],
+    "Description": "Optional package manager installed through WinGet."
+  },
+  {
+    "Key": "Scoop",
+    "Name": "Scoop",
+    "Category": "Tooling",
+    "Tools": [
+      "Scoop"
+    ],
+    "Description": "Guided install; run the official Scoop bootstrap after reviewing its documentation."
+  },
+  {
+    "Key": "DockerDesktop",
+    "Name": "Docker Desktop",
+    "Category": "Tooling",
+    "Tools": [
+      "Docker"
+    ],
+    "Description": "Docker Desktop without a backend profile."
+  },
+  {
+    "Key": "MySQLServer",
+    "Name": "MySQL Server",
+    "Category": "Tooling",
+    "Tools": [
+      "MySQL"
+    ],
+    "Description": "MySQL Community Server without a backend profile."
+  }
+]

@@ -1,61 +1,73 @@
 #requires -Version 5.1
 [CmdletBinding()]
 param(
-    [string[]]$Tools,
+    [string[]]$Technologies = @(),
+    [string[]]$Tools = @(),
+    [string]$SelectionFile,
     [switch]$All,
     [switch]$List,
+    [switch]$Gui,
+    [switch]$NoRequired,
+    [switch]$VerifyOnly,
     [ValidateSet('Auto', 'WinGet', 'Chocolatey', 'Scoop', 'Direct')]
     [string]$Manager = 'Auto',
     [switch]$DryRun
 )
-
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 Import-Module (Join-Path $PSScriptRoot 'WindowsDevInstalls.Core.psm1') -Force
+Import-Module (Join-Path $PSScriptRoot 'WindowsDevInstalls.Plan.psm1') -Force
 
-$catalog = @(Get-ToolCatalog)
-
-if ($List) {
-    $catalog | Select-Object Key, Name, Required, WinGetId, ChocolateyId, ScoopId |
-        Format-Table -AutoSize
+if ($Gui) {
+    if ([Environment]::OSVersion.Platform -ne [PlatformID]::Win32NT) {
+        throw 'The WPF interface is only available on Windows.'
+    }
+    & (Join-Path $PSScriptRoot 'UI\WindowsDevInstalls.Gui.ps1')
     return
 }
-
-if ($All -and $null -ne $Tools -and $Tools.Length -gt 0) {
-    throw 'Use -All or -Tools, not both.'
+if ($List) {
+    Write-Host '=== Tools ===' -ForegroundColor Cyan
+    Get-ToolCatalog | Select-Object Key, Name, Required, Type, WinGetId | Format-Table -AutoSize
+    Write-Host '=== Technologies ===' -ForegroundColor Cyan
+    Get-TechnologyCatalog | Select-Object Key, Name, Category, Description | Format-Table -Wrap -AutoSize
+    return
+}
+if (-not [string]::IsNullOrWhiteSpace($SelectionFile)) {
+    $selection = (Get-Content -LiteralPath $SelectionFile -Raw -Encoding UTF8 | ConvertFrom-Json -ErrorAction Stop)
+    $Technologies = @($selection.Technologies)
+    $Tools = @($selection.Tools)
+}
+if ($DryRun -and $VerifyOnly) { throw 'DryRun and VerifyOnly cannot be combined.' }
+if ($All -and @($Technologies).Count -gt 0) { throw 'Choose -All or -Technologies.' }
+if ($All) { $Technologies = @((Get-TechnologyCatalog) | Where-Object { $_.Category -ne 'Tooling' } | ForEach-Object { $_.Key }) }
+if ([Environment]::OSVersion.Platform -ne [PlatformID]::Win32NT -and -not ($DryRun -or $VerifyOnly)) {
+    throw 'Installing tools is supported on Windows only. Use -DryRun to preview the plan.'
 }
 
-if ($All) {
-    $selected = $catalog
+$logDir = $PSScriptRoot
+if (-not (Test-Path -LiteralPath $logDir)) { [void](New-Item -ItemType Directory -Path $logDir -Force) }
+$log = Join-Path $logDir ("log{0}-{1}.txt" -f (Get-Date -Format 'yyyyMMdd-HHmmss'),$PID)
+$exitCode = 0
+$transcriptStarted = $false
+try {
+    Start-Transcript -Path $log -ErrorAction Stop | Out-Null
+    $transcriptStarted = $true
+    $plan = @(Resolve-InstallPlan -Technologies $Technologies -Tools $Tools -IncludeRequired:(-not $NoRequired))
+    Write-Host "WindowsDevInstalls | $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')" -ForegroundColor Cyan
+    Write-Host "Selected technologies: $($Technologies -join ', ')"
+    Write-Host "Plan: $($plan.Count) unique tools | Manager: $Manager | DryRun: $DryRun | VerifyOnly: $VerifyOnly"
+    $results = @(Invoke-InstallPlan -Plan $plan -Manager $Manager -DryRun:$DryRun -VerifyOnly:$VerifyOnly)
+    Write-Host "`n=== Installation summary ===" -ForegroundColor Cyan
+    $results | Format-Table Name, Status, Manager, Message -AutoSize -Wrap | Out-Host
+    if (@($results | Where-Object { $_.Status -eq 'Failed' }).Count -gt 0) { $exitCode = 1 }
+    elseif (@($results | Where-Object { $_.Status -in @('VerificationPending','ActionRequired','Blocked') }).Count -gt 0) { $exitCode = 2 }
 }
-elseif ($null -ne $Tools -and $Tools.Length -gt 0) {
-    $selected = @()
-    foreach ($key in $Tools) {
-        $match = $catalog | Where-Object { $_.Key -eq $key } | Select-Object -First 1
-        if ($null -eq $match) {
-            $keys = ($catalog.Key -join ', ')
-            throw "Unknown tool '$key'. Valid keys: $keys"
-        }
-        if (@($selected | Where-Object { $_.Key -eq $match.Key }).Count -eq 0) {
-            $selected += $match
-        }
-    }
+catch {
+    Write-Host "[ERROR] $($_.Exception.Message)" -ForegroundColor Red
+    $exitCode = 1
 }
-else {
-    $selected = @($catalog | Where-Object { $_.Required })
+finally {
+    if ($transcriptStarted) { Stop-Transcript | Out-Null }
+    Write-Host "Log file: $log" -ForegroundColor Cyan
 }
-
-if ([Environment]::OSVersion.Platform -ne [PlatformID]::Win32NT -and -not $DryRun) {
-    throw 'WindowsDevInstalls supports installations on Windows only. Use -List or -DryRun elsewhere.'
-}
-
-$results = @()
-foreach ($tool in $selected) {
-    $results += Install-Application -Tool $tool -Manager $Manager -DryRun:$DryRun
-}
-
-Write-Host "`n--- Installation summary ---" -ForegroundColor Cyan
-$results | Format-Table Name, Status, Manager, Message -AutoSize -Wrap
-
-if (@($results | Where-Object { $_.Status -eq 'Failed' }).Count -gt 0) { exit 1 }
-if (@($results | Where-Object { $_.Status -eq 'VerificationPending' }).Count -gt 0) { exit 2 }
+exit $exitCode

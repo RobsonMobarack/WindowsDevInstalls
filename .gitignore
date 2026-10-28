@@ -1,1 +1,13 @@
-log.txt
+# Installation runs may reveal local file paths or machine details.
+Logs/*
+!Logs/.gitkeep
+log*.txt
+
+# Local PowerShell and testing state
+*.tmp
+*.bak
+.vscode/
+.idea/
+__pycache__/
+*.pyc
+.DS_Store

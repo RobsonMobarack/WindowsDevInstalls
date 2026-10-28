@@ -1,0 +1,15 @@
+WindowsDevInstalls/
+├── WindowsDevInstalls.ps1
+├── Modules/
+│   ├── Installer.Core.psm1
+│   ├── Installer.Dependency.psm1
+│   ├── Installer.PackageManagers.psm1
+│   └── Installer.Logger.psm1
+├── Config/
+│   ├── applications.json
+│   └── technologies.json
+├── UI/
+│   └── MainWindow.xaml
+├── Tests/
+│   └── ...
+└── Logs/

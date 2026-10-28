@@ -1,0 +1,729 @@
+[
+  {
+    "Key": "Git",
+    "Name": "Git",
+    "Required": true,
+    "Type": "package",
+    "Command": "git",
+    "ProbeArgs": [
+      "--version"
+    ],
+    "ProbePaths": [
+      "%ProgramFiles%\\Git\\cmd\\git.exe"
+    ],
+    "WinGetId": "Git.Git",
+    "ChocolateyId": "git",
+    "ScoopId": "git",
+    "ScoopBucket": "main",
+    "Direct": null,
+    "NpmPackage": null,
+    "DependsOn": []
+  },
+  {
+    "Key": "FFmpeg",
+    "Name": "FFmpeg",
+    "Required": true,
+    "Type": "package",
+    "Command": "ffmpeg",
+    "ProbeArgs": [
+      "-version"
+    ],
+    "ProbePaths": [],
+    "WinGetId": "Gyan.FFmpeg",
+    "ChocolateyId": "ffmpeg",
+    "ScoopId": "ffmpeg",
+    "ScoopBucket": "main",
+    "Direct": null,
+    "NpmPackage": null,
+    "DependsOn": []
+  },
+  {
+    "Key": "7Zip",
+    "Name": "7-Zip",
+    "Required": true,
+    "Type": "package",
+    "Command": "7z",
+    "ProbeArgs": [
+      "i"
+    ],
+    "ProbePaths": [
+      "%ProgramFiles%\\7-Zip\\7z.exe"
+    ],
+    "WinGetId": "7zip.7zip",
+    "ChocolateyId": "7zip",
+    "ScoopId": "7zip",
+    "ScoopBucket": "main",
+    "Direct": null,
+    "NpmPackage": null,
+    "DependsOn": []
+  },
+  {
+    "Key": "Alacritty",
+    "Name": "Alacritty",
+    "Required": true,
+    "Type": "package",
+    "Command": "alacritty",
+    "ProbeArgs": [
+      "--version"
+    ],
+    "ProbePaths": [],
+    "WinGetId": "Alacritty.Alacritty",
+    "ChocolateyId": "alacritty",
+    "ScoopId": "alacritty",
+    "ScoopBucket": "extras",
+    "Direct": null,
+    "NpmPackage": null,
+    "DependsOn": []
+  },
+  {
+    "Key": "ImageMagick",
+    "Name": "ImageMagick",
+    "Required": true,
+    "Type": "package",
+    "Command": "magick",
+    "ProbeArgs": [
+      "-version"
+    ],
+    "ProbePaths": [
+      "%ProgramFiles%\\ImageMagick-*\\magick.exe"
+    ],
+    "WinGetId": "ImageMagick.Q16-HDRI",
+    "ChocolateyId": "imagemagick",
+    "ScoopId": "imagemagick",
+    "ScoopBucket": "main",
+    "Direct": null,
+    "NpmPackage": null,
+    "DependsOn": []
+  },
+  {
+    "Key": "Neovim",
+    "Name": "Neovim",
+    "Required": true,
+    "Type": "package",
+    "Command": "nvim",
+    "ProbeArgs": [
+      "--version"
+    ],
+    "ProbePaths": [
+      "%ProgramFiles%\\Neovim\\bin\\nvim.exe"
+    ],
+    "WinGetId": "Neovim.Neovim",
+    "ChocolateyId": "neovim",
+    "ScoopId": "neovim",
+    "ScoopBucket": "main",
+    "Direct": null,
+    "NpmPackage": null,
+    "DependsOn": []
+  },
+  {
+    "Key": "VSCode",
+    "Name": "Visual Studio Code",
+    "Required": true,
+    "Type": "package",
+    "Command": "code",
+    "ProbeArgs": [
+      "--version"
+    ],
+    "ProbePaths": [
+      "%LOCALAPPDATA%\\Programs\\Microsoft VS Code\\bin\\code.cmd",
+      "%ProgramFiles%\\Microsoft VS Code\\bin\\code.cmd"
+    ],
+    "WinGetId": "Microsoft.VisualStudioCode",
+    "ChocolateyId": "vscode",
+    "ScoopId": "vscode",
+    "ScoopBucket": "extras",
+    "Direct": null,
+    "NpmPackage": null,
+    "DependsOn": []
+  },
+  {
+    "Key": "WezTerm",
+    "Name": "WezTerm",
+    "Required": true,
+    "Type": "package",
+    "Command": "wezterm",
+    "ProbeArgs": [
+      "--version"
+    ],
+    "ProbePaths": [],
+    "WinGetId": "wez.wezterm",
+    "ChocolateyId": "wezterm",
+    "ScoopId": "wezterm",
+    "ScoopBucket": "extras",
+    "Direct": null,
+    "NpmPackage": null,
+    "DependsOn": []
+  },
+  {
+    "Key": "fd",
+    "Name": "fd",
+    "Required": true,
+    "Type": "package",
+    "Command": "fd",
+    "ProbeArgs": [
+      "--version"
+    ],
+    "ProbePaths": [],
+    "WinGetId": "sharkdp.fd",
+    "ChocolateyId": "fd",
+    "ScoopId": "fd",
+    "ScoopBucket": "main",
+    "Direct": null,
+    "NpmPackage": null,
+    "DependsOn": []
+  },
+  {
+    "Key": "fzf",
+    "Name": "fzf",
+    "Required": true,
+    "Type": "package",
+    "Command": "fzf",
+    "ProbeArgs": [
+      "--version"
+    ],
+    "ProbePaths": [],
+    "WinGetId": "junegunn.fzf",
+    "ChocolateyId": "fzf",
+    "ScoopId": "fzf",
+    "ScoopBucket": "main",
+    "Direct": null,
+    "NpmPackage": null,
+    "DependsOn": []
+  },
+  {
+    "Key": "ripgrep",
+    "Name": "ripgrep",
+    "Required": true,
+    "Type": "package",
+    "Command": "rg",
+    "ProbeArgs": [
+      "--version"
+    ],
+    "ProbePaths": [],
+    "WinGetId": "BurntSushi.ripgrep.MSVC",
+    "ChocolateyId": "ripgrep",
+    "ScoopId": "ripgrep",
+    "ScoopBucket": "main",
+    "Direct": null,
+    "NpmPackage": null,
+    "DependsOn": []
+  },
+  {
+    "Key": "Node",
+    "Name": "Node.js (LTS)",
+    "Required": false,
+    "Type": "package",
+    "Command": "node",
+    "ProbeArgs": [
+      "--version"
+    ],
+    "ProbePaths": [],
+    "WinGetId": "OpenJS.NodeJS.LTS",
+    "ChocolateyId": "nodejs-lts",
+    "ScoopId": "nodejs-lts",
+    "ScoopBucket": "main",
+    "Direct": null,
+    "NpmPackage": null,
+    "DependsOn": []
+  },
+  {
+    "Key": "Docker",
+    "Name": "Docker Desktop",
+    "Required": false,
+    "Type": "package",
+    "Command": "docker",
+    "ProbeArgs": [
+      "--version"
+    ],
+    "ProbePaths": [
+      "%ProgramFiles%\\Docker\\Docker\\resources\\bin\\docker.exe",
+      "%LOCALAPPDATA%\\Programs\\DockerDesktop\\resources\\bin\\docker.exe"
+    ],
+    "WinGetId": "Docker.DockerDesktop",
+    "ChocolateyId": "docker-desktop",
+    "ScoopId": "docker",
+    "ScoopBucket": "extras",
+    "Direct": null,
+    "NpmPackage": null,
+    "DependsOn": []
+  },
+  {
+    "Key": "MySQL",
+    "Name": "MySQL Community Server",
+    "Required": false,
+    "Type": "package",
+    "Command": "mysqld",
+    "ProbeArgs": [
+      "--version"
+    ],
+    "ProbePaths": [
+      "%ProgramFiles%\\MySQL\\MySQL Server *\\bin\\mysqld.exe"
+    ],
+    "WinGetId": "Oracle.MySQL",
+    "ChocolateyId": "mysql",
+    "ScoopId": null,
+    "ScoopBucket": "main",
+    "Direct": null,
+    "NpmPackage": null,
+    "DependsOn": []
+  },
+  {
+    "Key": "Kubectl",
+    "Name": "kubectl",
+    "Required": false,
+    "Type": "package",
+    "Command": "kubectl",
+    "ProbeArgs": [
+      "version",
+      "--client"
+    ],
+    "ProbePaths": [
+      "%ProgramFiles%\\Docker\\Docker\\resources\\bin\\kubectl.exe",
+      "%LOCALAPPDATA%\\Programs\\DockerDesktop\\resources\\bin\\kubectl.exe"
+    ],
+    "WinGetId": "Kubernetes.kubectl",
+    "ChocolateyId": "kubernetes-cli",
+    "ScoopId": "kubectl",
+    "ScoopBucket": "main",
+    "Direct": null,
+    "NpmPackage": null,
+    "DependsOn": []
+  },
+  {
+    "Key": "KubernetesCluster",
+    "Name": "Kubernetes local (Docker Desktop)",
+    "Required": false,
+    "Type": "cluster",
+    "Command": "kubectl",
+    "ProbeArgs": [],
+    "ProbePaths": [],
+    "WinGetId": null,
+    "ChocolateyId": null,
+    "ScoopId": null,
+    "ScoopBucket": "main",
+    "Direct": null,
+    "NpmPackage": null,
+    "DependsOn": [
+      "Docker",
+      "Kubectl"
+    ]
+  },
+  {
+    "Key": "AngularCLI",
+    "Name": "Angular CLI",
+    "Required": false,
+    "Type": "npm",
+    "Command": "ng",
+    "ProbeArgs": [
+      "version"
+    ],
+    "ProbePaths": [],
+    "WinGetId": null,
+    "ChocolateyId": null,
+    "ScoopId": null,
+    "ScoopBucket": "main",
+    "Direct": null,
+    "NpmPackage": "@angular/cli",
+    "DependsOn": [
+      "Node"
+    ]
+  },
+  {
+    "Key": "IonicCLI",
+    "Name": "Ionic CLI",
+    "Required": false,
+    "Type": "npm",
+    "Command": "ionic",
+    "ProbeArgs": [
+      "--version"
+    ],
+    "ProbePaths": [],
+    "WinGetId": null,
+    "ChocolateyId": null,
+    "ScoopId": null,
+    "ScoopBucket": "main",
+    "Direct": null,
+    "NpmPackage": "@ionic/cli",
+    "DependsOn": [
+      "Node",
+      "AngularCLI"
+    ]
+  },
+  {
+    "Key": "FirebaseCLI",
+    "Name": "Firebase CLI",
+    "Required": false,
+    "Type": "npm",
+    "Command": "firebase",
+    "ProbeArgs": [
+      "--version"
+    ],
+    "ProbePaths": [],
+    "WinGetId": null,
+    "ChocolateyId": null,
+    "ScoopId": null,
+    "ScoopBucket": "main",
+    "Direct": null,
+    "NpmPackage": "firebase-tools",
+    "DependsOn": [
+      "Node"
+    ]
+  },
+  {
+    "Key": "NestCLI",
+    "Name": "NestJS CLI",
+    "Required": false,
+    "Type": "npm",
+    "Command": "nest",
+    "ProbeArgs": [
+      "--version"
+    ],
+    "ProbePaths": [],
+    "WinGetId": null,
+    "ChocolateyId": null,
+    "ScoopId": null,
+    "ScoopBucket": "main",
+    "Direct": null,
+    "NpmPackage": "@nestjs/cli",
+    "DependsOn": [
+      "Node"
+    ]
+  },
+  {
+    "Key": "TypeScriptCLI",
+    "Name": "TypeScript CLI",
+    "Required": false,
+    "Type": "npm",
+    "Command": "tsc",
+    "ProbeArgs": [
+      "--version"
+    ],
+    "ProbePaths": [],
+    "WinGetId": null,
+    "ChocolateyId": null,
+    "ScoopId": null,
+    "ScoopBucket": "main",
+    "Direct": null,
+    "NpmPackage": "typescript",
+    "DependsOn": [
+      "Node"
+    ]
+  },
+  {
+    "Key": "ViteCLI",
+    "Name": "Vite CLI (global opt-in)",
+    "Required": false,
+    "Type": "npm",
+    "Command": "vite",
+    "ProbeArgs": [
+      "--version"
+    ],
+    "ProbePaths": [],
+    "WinGetId": null,
+    "ChocolateyId": null,
+    "ScoopId": null,
+    "ScoopBucket": "main",
+    "Direct": null,
+    "NpmPackage": "vite",
+    "DependsOn": [
+      "Node"
+    ]
+  },
+  {
+    "Key": "Go",
+    "Name": "Go SDK",
+    "Required": false,
+    "Type": "package",
+    "Command": "go",
+    "ProbeArgs": [
+      "version"
+    ],
+    "ProbePaths": [],
+    "WinGetId": "GoLang.Go",
+    "ChocolateyId": "golang",
+    "ScoopId": "go",
+    "ScoopBucket": "main",
+    "Direct": null,
+    "NpmPackage": null,
+    "DependsOn": []
+  },
+  {
+    "Key": "JDK",
+    "Name": "Eclipse Temurin JDK 25 LTS",
+    "Required": false,
+    "Type": "package",
+    "Command": "javac",
+    "ProbeArgs": [
+      "-version"
+    ],
+    "ProbePaths": [],
+    "WinGetId": "EclipseAdoptium.Temurin.25.JDK",
+    "ChocolateyId": "temurin25",
+    "ScoopId": "temurin25",
+    "ScoopBucket": "main",
+    "Direct": null,
+    "NpmPackage": null,
+    "DependsOn": []
+  },
+  {
+    "Key": "Maven",
+    "Name": "Apache Maven",
+    "Required": false,
+    "Type": "package",
+    "Command": "mvn",
+    "ProbeArgs": [
+      "-version"
+    ],
+    "ProbePaths": [],
+    "WinGetId": null,
+    "ChocolateyId": "maven",
+    "ScoopId": "maven",
+    "ScoopBucket": "main",
+    "Direct": null,
+    "NpmPackage": null,
+    "DependsOn": [
+      "JDK"
+    ]
+  },
+  {
+    "Key": "LLVM",
+    "Name": "LLVM / Clang",
+    "Required": false,
+    "Type": "package",
+    "Command": "clang",
+    "ProbeArgs": [
+      "--version"
+    ],
+    "ProbePaths": [],
+    "WinGetId": "LLVM.LLVM",
+    "ChocolateyId": "llvm",
+    "ScoopId": "llvm",
+    "ScoopBucket": "main",
+    "Direct": null,
+    "NpmPackage": null,
+    "DependsOn": []
+  },
+  {
+    "Key": "CMake",
+    "Name": "CMake",
+    "Required": false,
+    "Type": "package",
+    "Command": "cmake",
+    "ProbeArgs": [
+      "--version"
+    ],
+    "ProbePaths": [],
+    "WinGetId": "Kitware.CMake",
+    "ChocolateyId": "cmake",
+    "ScoopId": "cmake",
+    "ScoopBucket": "main",
+    "Direct": null,
+    "NpmPackage": null,
+    "DependsOn": []
+  },
+  {
+    "Key": "Ninja",
+    "Name": "Ninja",
+    "Required": false,
+    "Type": "package",
+    "Command": "ninja",
+    "ProbeArgs": [
+      "--version"
+    ],
+    "ProbePaths": [],
+    "WinGetId": "Ninja-build.Ninja",
+    "ChocolateyId": "ninja",
+    "ScoopId": "ninja",
+    "ScoopBucket": "main",
+    "Direct": null,
+    "NpmPackage": null,
+    "DependsOn": []
+  },
+  {
+    "Key": "Make",
+    "Name": "GNU Make",
+    "Required": false,
+    "Type": "package",
+    "Command": "make",
+    "ProbeArgs": [
+      "--version"
+    ],
+    "ProbePaths": [],
+    "WinGetId": "GnuWin32.Make",
+    "ChocolateyId": "make",
+    "ScoopId": "make",
+    "ScoopBucket": "main",
+    "Direct": null,
+    "NpmPackage": null,
+    "DependsOn": []
+  },
+  {
+    "Key": "Python",
+    "Name": "Python 3.13",
+    "Required": false,
+    "Type": "package",
+    "Command": "python",
+    "ProbeArgs": [
+      "--version"
+    ],
+    "ProbePaths": [
+      "%LOCALAPPDATA%\\Programs\\Python\\Python313\\python.exe"
+    ],
+    "WinGetId": "Python.Python.3.13",
+    "ChocolateyId": "python313",
+    "ScoopId": "python",
+    "ScoopBucket": "main",
+    "Direct": null,
+    "NpmPackage": null,
+    "DependsOn": []
+  },
+  {
+    "Key": "Rustup",
+    "Name": "Rustup / Rust toolchain",
+    "Required": false,
+    "Type": "package",
+    "Command": "rustup",
+    "ProbeArgs": [
+      "--version"
+    ],
+    "ProbePaths": [
+      "%USERPROFILE%\\.cargo\\bin\\rustup.exe"
+    ],
+    "WinGetId": "Rustlang.Rustup",
+    "ChocolateyId": "rustup.install",
+    "ScoopId": "rustup",
+    "ScoopBucket": "main",
+    "Direct": null,
+    "NpmPackage": null,
+    "DependsOn": []
+  },
+  {
+    "Key": "Lua",
+    "Name": "Lua",
+    "Required": false,
+    "Type": "package",
+    "Command": "lua",
+    "ProbeArgs": [
+      "-v"
+    ],
+    "ProbePaths": [],
+    "WinGetId": null,
+    "ChocolateyId": "lua",
+    "ScoopId": "lua",
+    "ScoopBucket": "main",
+    "Direct": null,
+    "NpmPackage": null,
+    "DependsOn": []
+  },
+  {
+    "Key": "Qt",
+    "Name": "Qt framework installer",
+    "Required": false,
+    "Type": "manual",
+    "Command": "qmake",
+    "ProbeArgs": [
+      "-v"
+    ],
+    "ProbePaths": [],
+    "WinGetId": null,
+    "ChocolateyId": null,
+    "ScoopId": null,
+    "ScoopBucket": "main",
+    "Direct": null,
+    "NpmPackage": null,
+    "DependsOn": []
+  },
+  {
+    "Key": "Jdtls",
+    "Name": "Eclipse JDT Language Server",
+    "Required": false,
+    "Type": "package",
+    "Command": "jdtls",
+    "ProbeArgs": [
+      "--version"
+    ],
+    "ProbePaths": [],
+    "WinGetId": null,
+    "ChocolateyId": null,
+    "ScoopId": "jdtls",
+    "ScoopBucket": "main",
+    "Direct": null,
+    "NpmPackage": null,
+    "DependsOn": [
+      "JDK",
+      "Python"
+    ]
+  },
+  {
+    "Key": "TreeSitter",
+    "Name": "Tree-sitter CLI",
+    "Required": true,
+    "Type": "package",
+    "Command": "tree-sitter",
+    "ProbeArgs": [
+      "--version"
+    ],
+    "ProbePaths": [],
+    "WinGetId": "tree-sitter.tree-sitter-cli",
+    "ChocolateyId": "tree-sitter",
+    "ScoopId": "tree-sitter",
+    "ScoopBucket": "main",
+    "Direct": null,
+    "NpmPackage": null,
+    "DependsOn": []
+  },
+  {
+    "Key": "NVM",
+    "Name": "NVM for Windows",
+    "Required": false,
+    "Type": "package",
+    "Command": "nvm",
+    "ProbeArgs": [
+      "version"
+    ],
+    "ProbePaths": [],
+    "WinGetId": "CoreyButler.NVMforWindows",
+    "ChocolateyId": "nvm",
+    "ScoopId": null,
+    "ScoopBucket": "main",
+    "Direct": null,
+    "NpmPackage": null,
+    "DependsOn": []
+  },
+  {
+    "Key": "Chocolatey",
+    "Name": "Chocolatey",
+    "Required": false,
+    "Type": "package",
+    "Command": "choco",
+    "ProbeArgs": [
+      "--version"
+    ],
+    "ProbePaths": [],
+    "WinGetId": "Chocolatey.Chocolatey",
+    "ChocolateyId": null,
+    "ScoopId": null,
+    "ScoopBucket": "main",
+    "Direct": null,
+    "NpmPackage": null,
+    "DependsOn": []
+  },
+  {
+    "Key": "Scoop",
+    "Name": "Scoop",
+    "Required": false,
+    "Type": "manual",
+    "Command": "scoop",
+    "ProbeArgs": [
+      "--version"
+    ],
+    "ProbePaths": [],
+    "WinGetId": null,
+    "ChocolateyId": null,
+    "ScoopId": null,
+    "ScoopBucket": "main",
+    "Direct": null,
+    "NpmPackage": null,
+    "DependsOn": []
+  }
+]
